@@ -1,10 +1,26 @@
+'''Imports'''
 import matplotlib.pyplot as plt
 import numpy as np
 import math
 import random
 import matplotlib.animation as animation
-
+'''
+Class defintion:
+Robot class contains the continuous and discrete states of each robot.
+z= [x-position, y-position, theta (direction)]
+tau = tagging ability
+-smaller or equal to 0; has tagging ability
+-else; no tagging ability
+q=activation state
+-0=active; 1=deactivated
+eta=carrying flag
+-0=not carrying flag; 1=carrying flag
+ti is an array that saves the value of these parameters for every time step
+'''
 class Robot():
+    '''
+    Initializes the robots with the starting values. 
+    '''
     def __init__(self, z, tau, q, eta):
         self.z = z 
         self.tau = tau 
@@ -14,6 +30,9 @@ class Robot():
         self.add_time_step(z,tau,q,eta)
         self.time=0
 
+    '''
+    Adds the current time step to the ti array.
+    '''
     def add_time_step(self,z,tau,q,eta):
         self.ti.append([z,tau,q,eta])
 
@@ -34,7 +53,9 @@ class Robot():
     
     def getData(self):
         return self.ti
-
+    '''
+    Updates the current variables with the ones given from the system.
+    '''
     def step (self, z, tau, q, eta, time):
         z[0]=round(z[0],3)
         z[1]=round(z[1],3)
@@ -44,6 +65,9 @@ class Robot():
         self.q=q
         self.eta=eta
 
+'''
+Sets the bounds of the map
+'''
 x_f = np.array([-80, 80, 80, -80, -80])
 y_f = np.array([-40, -40, 40, 40, -40])
 X = np.array([-80, -40, 80, 40])  
@@ -54,44 +78,67 @@ X_R = np.array([0, -40, 80, 40])
 l = np.linspace(0, 2 * np.pi, 200)  
 flx = np.sin(l)
 fly = np.cos(l)
-
+'''
+Define radius of flag capture area and robot tagging area.
+'''
 gf = 10  
 gc = 10 
-
+'''
+Define flag position.
+'''
 FB = np.array([-60, 0])  
 FR = np.array([60, 0])   
-
+'''
+Define number of Robots
+'''
 b = 3 
 r = 3  
-
+'''
+Set inital distance from flag
+'''
 ip = 25  
-
+'''
+Define time out time
+'''
 barT = 2  
 
+'''
+Dictionaries to store the robots in each team. 
+'''
 RobotsB={}
 RobotsR={}
-
+'''
+Returns true if point is in rectangle; else false.
+'''
 def pointInRectangle(p,rect):
     x=p[0]
     y=p[1]
     return (rect[0]<=x<=rect[1]) and (rect[2]<=y<=rect[3])
-
+'''
+Returns true if point is in rectangle; else false.
+'''
 def pointInCircle(p,center,radius):
     x=p[0]
     y=p[1]
     distance = (((x-center[0])**2) + ((y-center[1])**2))**0.5
     return (distance<=radius)
-
+'''
+Returns the new time for tagging ability. 
+'''
 def Tagging_Ability(tau,barT):
     return barT
-
+'''
+Calculates the angle between two points
+'''
 def calculate_angle(x1, y1, x2, y2):
     dx = x2 - x1
     dy = y2 - y1
     angle = math.atan2(dy, dx)
     return angle
 
-
+'''
+Controller
+'''
 def Angle_Control(ti, MRobots, ORobots, z, tau, q, eta, MF, OF, NMA, NOA, dt):
 
     if q == 1: #or (MRobots.getEta() == 1 and MRobots.getZ()[0] * MF[0] >= 0):
@@ -100,7 +147,9 @@ def Angle_Control(ti, MRobots, ORobots, z, tau, q, eta, MF, OF, NMA, NOA, dt):
         theta = np.sin(ti*dt*4)
     return theta
     
-
+'''
+Robot dynamics given current state, velocity, and theta
+'''
 def robot_dynamics(z, u, dt):
     
     u1 = 0.5*u[0]
@@ -118,7 +167,9 @@ def robot_dynamics(z, u, dt):
     
     return z_plus
 
-
+'''
+Initializes blue robots
+'''
 for k in range(1, b+1):
     z = np.array([FB[0] + ip * np.cos(-np.pi / 2 + k * np.pi / (b + 1)),
                 FB[1] + ip * np.sin(-np.pi / 2 + k * np.pi / (b + 1)),
@@ -130,6 +181,9 @@ for k in range(1, b+1):
 
 RobotsB['mu']=1
 
+'''
+Initializes red robots
+'''
 for k in range(1, r+1):
     z = np.array([FR[0] + ip * np.cos(np.pi / 2 + k * np.pi / (r + 1)),  
                 FR[1] + ip * np.sin(np.pi / 2 + k * np.pi / (r + 1)),  
@@ -141,11 +195,16 @@ for k in range(1, r+1):
 
 RobotsR['mu']=1
 
+'''
+Set time span
+'''
 TSPAN=[0,10]
 dt=0.01
 
+'''
+Main Simulation Loop
+'''
 for ti in range(int(TSPAN[1]/dt)):
-#for ti in range(10):
     for k in range (1,b+1):
         for i in range(1,r+1):
             CurRobotB=RobotsB[f"Robot{k}B"]
@@ -161,7 +220,7 @@ for ti in range(int(TSPAN[1]/dt)):
             qR=CurRobotR.getQ()
             etaR=CurRobotR.getEta()
             muR=RobotsR['mu']
-
+            
             if (pointInRectangle(zB[0:2],X_B) and qB==0 and tauB<=0 and 
                 pointInRectangle(zR[0:2], X_B) and qR()==0 and pointInCircle(zR[0:2],zB()[0:2],gc)):
                 tauB=Tagging_Ability(tauB,barT)
