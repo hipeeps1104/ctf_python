@@ -1,0 +1,254 @@
+// Hybrid Control Main File
+
+// Parameters
+DEFINE PlayingField AS rectangle WITH vertices: 
+    [-80, -40], [80, -40], [80, 40], [-80, 40]
+DEFINE TeamBlueRegion AS rectangle WITH vertices: ?
+DEFINE TeamRedRegion AS rectangle WITH vertices: ?
+
+DEFINE RadiusOfFlagCaptureRegion AS 10
+DEFINE RadiusOfRobotTaggingRegion AS 10
+
+DEFINE BlueFlagPosition AS [-60, 0]
+DEFINE RedFlagPosition AS [60, 0]
+
+DEFINE NumberOfBlueRobots AS 3
+DEFINE NumberOfRedRobots AS 3
+
+DEFINE InitialDistanceFromFlag AS 25
+DEFINE TagTimeout AS 2
+
+// Initialize Blue Robots
+FOR EACH blueRobot IN NumberOfBlueRobots:
+    GENERATE Identifiers:
+        Z = [x, y, direction] // 3x1 matrix
+        Tau = 0 // Tagging ability (0 = can tag)
+        Q = 0 // Activation state (0 = activated)
+        Eta = 0 // Carrying flag (0 = not carrying)
+
+    INITIALIZE Z BASED ON parameters
+    INITIALIZE Tau, Q, Eta
+
+// Initialize Red Robots
+FOR EACH redRobot IN NumberOfRedRobots:
+    GENERATE Identifiers:
+        Z = [x, y, direction] // 3x1 matrix
+        Tau = 0 // Tagging ability (0 = can tag)
+        Q = 0 // Activation state (0 = activated)
+        Eta = 0 // Carrying flag (0 = not carrying)
+
+    INITIALIZE Z BASED ON parameters
+    INITIALIZE Tau, Q, Eta
+
+// Simulation parameters
+DEFINE SimulationTime AS 10 seconds
+DEFINE TimeStep AS 0.01 seconds   
+
+// Main Simulation Loop
+FOR timeStamp FROM 0 TO SimulationTime STEP TimeStep:
+    // Update Blue Robots
+    FOR EACH blueRobot:
+        GET z, tau, q, eta
+        FOR EACH redRobot:
+            GET zi, taui, qi, etai
+            
+            // Blue Robot in Blue Region
+            IF blueRobot IS IN TeamBlueRegion AND blueRobot IS ACTIVE AND blueRobot HAS tagging ability 
+               AND redRobot IS IN TeamBlueRegion AND redRobot IS ACTIVE 
+               AND redRobot IS WITHIN tagging radius OF blueRobot:
+               
+                // Tagging event
+                blueRobot LOSES tagging ability
+                redRobot DEACTIVATED
+                
+                // Flag transfer
+                IF redRobot IS CARRYING flag AND blueRobot IS NOT CARRYING flag:
+                    redRobot LOSES flag
+                    blueRobot GAINS flag
+            END IF
+            
+            // Blue Robot in Red Region
+            IF blueRobot IS IN TeamRedRegion AND blueRobot IS ACTIVE 
+               AND redRobot IS IN TeamRedRegion AND redRobot IS ACTIVE 
+               AND redRobot HAS tagging ability AND blueRobot IS WITHIN redRobot's tagging radius 
+               OR blueRobot IS OUTSIDE flagging field AND IS ACTIVE 
+               OR blueRobot IS WITHIN blue flag's radius AND IS TAGGED:
+               
+                IF redRobot IS IN TeamRedRegion AND redRobot IS ACTIVE 
+                   AND blueRobot IS IN TeamRedRegion AND blueRobot IS ACTIVE 
+                   AND blueRobot IS WITHIN redRobot's tagging radius:
+                    redRobot LOSES tagging ability
+                END IF
+                
+                IF blueRobot IS TAGGED OR blueRobot LEAVES playing field:
+                    blueRobot DROPS flag
+                    redRobot PICKS UP flag
+                END IF
+                
+                UPDATE blueRobot's tagged state
+            END IF
+            
+            // Special Cases
+            IF blueRobot IS TAGGED IN red zone WITH flag:
+                MOVE blueRobot TO RedFlagPosition
+                SET blueRobot's flag state TO dropped
+            END IF
+            
+            IF blueRobot IS TAGGED IN blue zone WITH flag:
+                SET blueRobot's activation state TO inactive
+            END IF
+            
+        // Update blue robot dynamics
+        CALCULATE new angle USING angle control method
+        UPDATE robot dynamics
+        UPDATE robot discrete variables 
+    END FOR
+
+    // Repeat same logic for Red Team
+    FOR EACH redRobot:
+        GET z, tau, q, eta
+        FOR EACH blueRobot:
+            GET zi, taui, qi, etai
+            
+            // Red Robot in Red Region (similar logic as above)
+            // Implement tagging and flag transfer logic for red robots
+            
+        // Update red robot dynamics
+        CALCULATE new angle USING angle control method
+        UPDATE robot dynamics
+        UPDATE robot discrete variables 
+    END FOR
+END FOR
+
+
+
+
+
+
+
+
+
+Angle Control
+
+FUNCTION Angle_Control(ti, MRobots, ORobots, z, tau, q, eta, MF, OF, NMA, NOA, dt)
+    // ti: actual time
+    // MRobots: vector of my robots
+    // ORobots: vector of opponent robots
+    // z, tau, q, eta: my state variables
+    // MF: my flag's position
+    // OF: opponent's flag's position
+    // NMA: number of robots in my team
+    // NOA: number of robots in opponent's team
+    // dt: time step
+    
+    // Get positions of opponent robots and attackers at time ti
+    Oponnent_Positions_0, Attackers_Positions = Positions_in_Matrix(MRobots.z(ti, 1), ORobots, NOA, ti)
+    
+    Filter to only include robots in the same half
+    
+    Get index of the closest opponent and attacker
+        
+    Get names of the closest opponent and attacker
+        
+    // Determine behavior based on various conditions
+    IF my robot is deactivated OR carries the flag on my side
+        Set theta to navigate back to base
+        
+    ELSE IF carries the flag on the other side
+        IF active_opponents > 0
+            Set theta to return the flag while avoiding the closest opponent
+        ELSE
+            Set theta to return the flag
+        END IF
+        
+    ELSE IF active attack > 0 AND active opponent > 0 AND not carrying flag AND active AND has tagging ability AND on my side
+        IF has flag AND active attackers > 0
+            Set theta to defend the flag
+        ELSE IF flag is gone AND active opponent
+            Set theta to defend the boundary
+        ELSE
+            Set theta to a default
+        END IF
+        
+    ELSE IF my robot is the second robot and opponent's flag is still there
+        IF on my side
+            Set theta to cross to opponent's side
+        ELSE
+            Set theta to capture the flag
+        END IF
+        
+    ELSE IF red robots are 1, 2, or 3
+        Arbitrary set theta
+    ELSE
+        Arbitrary set theta
+    END IF
+    
+    RETURN theta
+END FUNCTION
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+FUNCTION Positions_in_Matrix(MRpx, ORobots, NOA, ti)
+    // MRpx: x position of my robot
+    // ORobots: opponent team's vector
+    // NOA: number of robots in opponent team
+    // ti: current time index
+    
+    // Initialize empty lists for boundary defenders and attackers
+    Boundary_defenders_pos = []
+    attackers_pos = []
+    
+    // Get list for opponent robots
+    fn = fieldnames(ORobots)
+
+    // Iterate through each opponent robot
+    FOR m FROM 1 TO NOA
+        // Extract the robot's position, tau, and activation state
+        z = fn[1 + 4 * (m - 1)]    // Position field name
+        tau = fn[2 + 4 * (m - 1)]  // Tau field name
+        q = fn[3 + 4 * (m - 1)]    // Activation state field name
+        
+        // Calculate the position of boundary defenders
+        Boundary_defenders_pos = Boundary_defenders_pos + 
+            ([-100, 0] * (IF (my robot and opponent robot are in the same boundary) THEN 1 ELSE 0) *
+            (IF (robot is closer to boundary than opponent) THEN 0 ELSE 1) *
+            (IF (no tagging ability) THEN 1 ELSE 0) + ORobots[q](ti) + 
+            (IF (robot is closer to boundary than opponent) THEN 1 ELSE 0) + 
+            [1, 1] * ORobots[z](ti, 1:2)
+        
+        // Calculate the position of attackers
+        attackers_pos = attackers_pos + 
+            ([-100, 0] * (IF (on the same side) AND (opponent is closer) AND (robot has tagging ability) THEN 1 ELSE 0) +
+            (IF (robot is activated) THEN 1 ELSE 0) + 
+            [1, 1] * ORobots[z](ti, 1:2)
+    END FOR
+    
+    // Return the positions of boundary defenders and attackers
+    RETURN Boundary_defenders_pos, attackers_pos
+END FUNCTION
