@@ -145,7 +145,7 @@ def calculate_angle(x1, y1, x2, y2):
 Controller
 '''
 
-def Angle_Control(ti, MRobots, ORobots, z, tau, q, eta, MF, OF, NMA, NOA, dt):
+def Angle_Control(ti, MRobots, ORobots, z, tau, q, eta, Mmu, Omu, MF, OF, NMA, NOA, MRobs, ORobs, dt):
     #Simple Controller
     #If deactivated or has flag, return to base
     if q == 1 or eta==1:
@@ -158,7 +158,7 @@ def Angle_Control(ti, MRobots, ORobots, z, tau, q, eta, MF, OF, NMA, NOA, dt):
         thetab = np.sin(ti*dt*4)
     return thetab
 
-def Angle_Control_sin(ti, MRobots, ORobots, z, tau, q, eta, MF, OF, NMA, NOA, dt):
+def Angle_Control_sin(ti, MRobots, ORobots, z, tau, q, eta, Mmu, Omu, MF, OF, NMA, NOA, MRobs, ORobs, dt):
     #Simple Controller
     #If deactivated or has flag, return to base
     if q == 1 or eta==1:
@@ -491,7 +491,7 @@ for ti in range(1,int(TSPAN[1]/dt)):
             CurRobotR.upstate(zR,tauR-dt,qR,etaR,ti)
    
         #  Controller       
-        thetab = Angle_Control1(ti,CurRobotB,CurRobotR,zB,tauB,qB,etaB,muB,muR,FB,FR,b,r, RobotsB,RobotsR, dt)
+        thetab = Angle_Control(ti,CurRobotB,CurRobotR,zB,tauB,qB,etaB,muB,muR,FB,FR,b,r, RobotsB,RobotsR, dt)
         # Flow of robot
         zB = robot_dynamics(zB, [40, thetab],dt)
         # flow of logic variable
@@ -558,13 +558,8 @@ for ti in range(1,int(TSPAN[1]/dt)):
 
             RobotsB['mu'][-1]=muB
             CurRobotB.upstate(zB,tauB-dt,qB,etaB,ti)
-        # Angle control
-        if i == 3 or i==2:
-            thetab=Angle_Control_sin(ti,CurRobotR,CurRobotB,zR,tauR,qR,etaR,FR,FB,b,r, dt)
-        else:
-            thetab = Angle_Control(ti,CurRobotR,CurRobotB,zR,tauR,qR,etaR,FR,FB,b,r, dt)
+        thetab = Angle_Control(ti,CurRobotR,CurRobotB,zR,tauR,qR,etaR,muR,muB,FR,FB,r,b, RobotsR,RobotsB, dt)
         zR = robot_dynamics(zR, [50, thetab],dt)
-
         # CurRobotR.step(zR,tauR,qR,etaR,ti)
         CurRobotR.step(zR,tauR-dt,qR,etaR,ti)
         RobotsR['mu'][-1]=muR
