@@ -493,7 +493,7 @@ for ti in range(1,int(TSPAN[1]/dt)):
         #  Controller       
         thetab = Angle_Control(ti,CurRobotB,CurRobotR,zB,tauB,qB,etaB,muB,muR,FB,FR,b,r, RobotsB,RobotsR, dt)
         # Flow of robot
-        zB = robot_dynamics(zB, [50, thetab],dt)
+        zB = robot_dynamics(zB, [45, thetab],dt)
         # flow of logic variable
         #CurRobotB.step(zB,tauB,qB,etaB,ti)
         CurRobotB.step(zB,tauB-dt,qB,etaB,ti)
@@ -560,7 +560,7 @@ for ti in range(1,int(TSPAN[1]/dt)):
             RobotsR['mu'][-1]=muR
             CurRobotB.upstate(zB,tauB-dt,qB,etaB,ti)
         thetab = Angle_Control(ti,CurRobotR,CurRobotB,zR,tauR,qR,etaR,muR,muB,FR,FB,r,b, RobotsR,RobotsB, dt)
-        zR = robot_dynamics(zR, [45, thetab],dt)
+        zR = robot_dynamics(zR, [50, thetab],dt)
         # CurRobotR.step(zR,tauR,qR,etaR,ti)
         CurRobotR.step(zR,tauR-dt,qR,etaR,ti)
         RobotsR['mu'][-1]=muR
@@ -584,6 +584,7 @@ ax.set_aspect('equal')
 ax.set_xlabel("X")
 ax.set_ylabel("Y")
 ax.set_title("Hybrid Robot System") # add title
+ax.grid(True)
 circleB = plt.Circle((FB[0], FB[1]), gf, color='b', fill=False, linewidth=3) # gb=10
 ax.add_patch(circleB)
 circleR = plt.Circle((FR[0], FR[1]), gf, color='r', fill=False, linewidth=3)
@@ -630,6 +631,8 @@ def update(i):
     ax.set_xlabel("X")
     ax.set_ylabel("Y")
     ax.set_title("Hybrid Robot System")
+
+    ax.grid(True)
 
     # Draw team B (blue) flag zone boundary as a circle
     circleB = plt.Circle((FB[0], FB[1]), gf, color='b', fill=False, linewidth=3)
@@ -685,10 +688,10 @@ def update(i):
         ax.add_patch(rect_obj)
 
         # Determine robot's scatter marker type based on activation status
-        q_state = robot_dict[robot_name].getTime(i)[3]
-        if q_state == 0:
+        eta = robot_dict[robot_name].getTime(i)[3]
+        if eta == 0:
             scatter_obj = ax.scatter(x, y, s=100, marker='o', alpha=1)
-        elif q_state == 1:
+        elif eta == 1:
             scatter_obj = ax.scatter(x, y, s=100, marker='^', alpha=1)
         else:
             scatter_obj = ax.scatter(x, y, s=100, marker='^', alpha=1)
@@ -699,11 +702,11 @@ def update(i):
 
         # Determine robot color based on flag and field position status
         z1 = robot_dict[robot_name].getTime(i)[1]  # x-position
-        eta = robot_dict[robot_name].getTime(i)[2]  # eta state
+        q = robot_dict[robot_name].getTime(i)[2]  # eta state
 
-        if z1 < 0 and eta == 0:
+        if z1 < 0 and q == 0:
             scatter_obj.set_facecolor(color_0)  # Base color
-        elif eta == 1:
+        elif q == 1:
             scatter_obj.set_facecolor(color_1)  # Carrying flag
         else:
             scatter_obj.set_facecolor(color_2)  # Inactive/default
