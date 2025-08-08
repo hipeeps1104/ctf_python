@@ -158,7 +158,7 @@ def Angle_Control(ti, MRobots, ORobots, z, tau, q, eta, Mmu, Omu, MF, OF, NMA, N
         thetab = np.sin(ti*dt*4)
     return thetab
 
-def Angle_Control_sin(ti, MRobots, ORobots, z, tau, q, eta, Mmu, Omu, MF, OF, NMA, NOA, MRobs, ORobs, dt):
+def Angle_Control_sin(ti, MRobots, ORobots, z, tau, q, eta, Mmu, Omu, MF, OF, NMA, NOA, MRobs, ORobs, color, dt):
     #Simple Controller
     #If deactivated or has flag, return to base
     if q == 1 or eta==1:
@@ -168,14 +168,24 @@ def Angle_Control_sin(ti, MRobots, ORobots, z, tau, q, eta, Mmu, Omu, MF, OF, NM
         thetab = np.sin(ti*dt*4)
     return thetab
 
-def Angle_Control1 (ti, MRobots, ORobots, z, tau, q, eta, Mmu, Omu, MF, OF, NMA, NOA, MRobs, ORobs, dt):
+def Angle_Control1 (ti, MRobots, ORobots, z, tau, q, eta, Mmu, Omu, MF, OF, NMA, NOA, MRobs, ORobs, color, dt):
     # Get predicted positions of opponents and attackers at current time step
-    [Opponent_Positions_0, Attackers_Positions] = Positions_in_Matrix(MRobots.getZ()[0], ORobs, NOA, ti)
+    # print(MRobots.getZ()[0])
     
+    [Opponent_Positions_0, Attackers_Positions_0] = Positions_in_Matrix(MRobots.getZ()[0], ORobs, NOA, ti)
+    # print(Opponent_Positions_0)
+
+    # print('000')
+    # print(Attackers_Positions_0)
+
     # Filter only active opponents/attackers that are in my robot's current half
     [Opponent_Positions, active_opponents] = multiplyFirstElement(MRobots.getZ()[0], Opponent_Positions_0)
-    [Attackers_Positions, active_attackers] = multiplyFirstElement(MRobots.getZ()[0], Attackers_Positions)
+    [Attackers_Positions, active_attackers] = multiplyFirstElement(MRobots.getZ()[0], Attackers_Positions_0)
 
+    # print('oppo')
+    # print(Opponent_Positions)
+    # print('att')
+    # print(Attackers_Positions)
     # Determine the closest opponent and attacker to my robot
     Closest_Opponent_index = closest_opponent(MRobots.getZ()[0:2], Opponent_Positions)
     Closest_Attacker_index = closest_opponent(MRobots.getZ()[0:2], Attackers_Positions)
@@ -186,9 +196,10 @@ def Angle_Control1 (ti, MRobots, ORobots, z, tau, q, eta, Mmu, Omu, MF, OF, NMA,
     if MRobots.getQ() == 1 or (MRobots.getEta() == 1 and MRobots.getZ()[0] * MF[0] >= 0):
         # Set theta to head toward my flag (return to base)
         theta = calculate_angle(MRobots.getZ()[0], MRobots.getZ()[1], MF[0], MF[1])
+        return theta
     
     # Case 2: Robot carries the flag AND is on opponent's side (eta==1 and position < 0)
-    elif MRobots.getEta() == 1 and MRobots.getZ()[0] <= 0:
+    elif MRobots.getEta() == 1 and MRobots.getZ()[0]*MF[0] <= 0:
         if active_opponents>0:
             # Return flag while avoiding closest opponent 
             m_x=-(MRobots.getZ()[1]-ORobots.getZ()[1])/(MRobots.getZ()[0]-ORobots.getZ()[0])
@@ -199,9 +210,11 @@ def Angle_Control1 (ti, MRobots, ORobots, z, tau, q, eta, Mmu, Omu, MF, OF, NMA,
             numer = m_x * yst + n_x - (MRobots.getZ()[0] - OF[0])
             denom = np.linalg.norm(np.array([m_x * yst + n_x, yst]) - diff1)
             theta = np.sign(m_x) * np.arccos(numer / denom)
+            return theta
         else:
             # No opponents around, return in straight line
-            theta = (1 + np.sign(MRobots.getZ[0])) * np.pi / 2
+            theta = (1 + np.sign(MRobots.getZ()[0])) * np.pi / 2
+            return theta
 
     # Case 3: Robot is active, on my side, not carrying the flag, and there is an active threat (attackers or opponents)
     elif active_attackers+active_opponents>0 and MRobots.getEta()==0 and MRobots.getQ()==0 and MRobots.getTau() <=0 and MRobots.getZ()[0]*MF[0]>0:
@@ -210,7 +223,7 @@ def Angle_Control1 (ti, MRobots, ORobots, z, tau, q, eta, Mmu, Omu, MF, OF, NMA,
             # Set theta to defend the flag
             vec1 = ORobots.getZ()[0:1] - MF
             vec2 = MRobots.getZ()[0:1] - MF
-            vec_diff = ORobots.getZ()[0:1] - MRobots.getZ()[0:1]
+            vec_diff = np.asarray(ORobots.getZ()[0:1]) - np.asarray(MRobots.getZ()[0:1])
             denom = np.linalg.norm(vec_diff)**2
 
             xst = 0.5 * (np.linalg.norm(vec1)**2 - np.linalg.norm(vec2)**2) * \
@@ -220,7 +233,8 @@ def Angle_Control1 (ti, MRobots, ORobots, z, tau, q, eta, Mmu, Omu, MF, OF, NMA,
             (ORobots.getZ()[1] - MRobots.getZ()[1]) / denom
 
             diff_vec = np.array([xst, yst]) - MRobots.getZ()[0:1]
-            theta = np.arccos((xst - MRobots[z][ti, 0]) / np.linalg.norm(diff_vec))
+            theta = np.arccos((xst - MRobots.getZ()[0]) / np.linalg.norm(diff_vec))
+            return theta
         # If flag is gone and opponents present
         elif Mmu == 0 and active_opponents > 0:
             # Set theta to protect boundary
@@ -233,15 +247,24 @@ def Angle_Control1 (ti, MRobots, ORobots, z, tau, q, eta, Mmu, Omu, MF, OF, NMA,
 
             yst = 40 * np.sign(m_x)
 
-            numer = m_x * yst + n_x - (MRobots[z][ti, 0] - OF[0])
+            numer = m_x * yst + n_x - (MRobots.getZ()[0] - OF[0])
             denom = np.linalg.norm(np.array([m_x * yst + n_x, yst]) - vec2)
 
     
             theta = (MF[0] < 0) * np.pi + np.sign(MF[0]) * np.arccos(numer / denom)
-        # Fallback behavior: simple oscillating patrol or search
-        else:
-            theta=np.sin(ti*dt*4)
+            return theta
+    elif Omu==1:
+        # if MRobots.getZ()[0]*MF[0]>0:
+        #     theta=(1+np.sign(MRobots.getZ()[0]))*np.pi/2
+        #     return theta
+        # else:
+        #     theta=calculate_angle(MRobots.getZ()[0],MRobots.getZ()[1],OF[0],OF[1])
+        #     return theta
+        theta=calculate_angle(MRobots.getZ()[0],MRobots.getZ()[1],OF[0],OF[1])
+        return theta
     # General fallback behavior
+    elif color == 'r':
+        theta=np.sin(ti*dt*4)+np.pi
     else:
         theta=np.sin(ti*dt*4)
     return theta
@@ -319,27 +342,35 @@ def multiplyFirstElement(MRpx, OPosMat):
             ORobotsInOpHalf=np.vstack([ORobotsInOpHalf, 1]) # Opponent half
         else:
             ORobotsInOpHalf=np.vstack([ORobotsInOpHalf, 0]) # My half or on boundary
-
+    # print(ORobotsInOpHalf)s
     # Initialize result matrix for storing transformed positions
     resultMat=[]
-
     # Iterate over opponent robots starting from index 1 
     for i in range(0, ORobotsInOpHalf.shape[0]):
         if ORobotsInOpHalf[i]==1:
             # Emphasize x-distance (multiply x by 100) to exaggerate horizontal separation
             modified_row = [OPosMat[i][0] * 100, OPosMat[i][1]]
-            resultMat.append(modified_row)
+            resultMat.append(np.asarray(modified_row))
+        else:
+            resultMat.append(np.asarray(OPosMat[i]))
+    # print('hasdifoa')
+    # print(resultMat)
+    # print(OPosMat)
      # Convert result list to numpy array
-    OPosMat = np.array(resultMat)
+    #OPosMat = np.array(resultMat)
     # Calculate number of same-half robots: total - number in opponent half
     NSH = len(OPosMat)-sum(ORobotsInOpHalf)
     # Return filtered and transformed positions, and count of same-half robots
-    return OPosMat,NSH
+    return resultMat,NSH
 
 
 def closest_opponent(my_position, opponents_positions):
     # Combine my robot's position with the opponent positions into a single array.
     # This allows using a k-d tree to efficiently find the nearest neighbor.
+    # print('my position')
+    # print(my_position)
+    # print('opponents')
+    # print(opponents_positions)
     all_positions = np.vstack([my_position, opponents_positions])
     # Create a KD-tree from all positions (including my own) for fast nearest-neighbor search
     kdtree = NearestNeighbors(n_neighbors=2, algorithm='kd_tree').fit(all_positions)
@@ -409,7 +440,7 @@ Set time span
 '''
 # Simulation Horizon
 #TSPAN=[0,500] # Second entry is the maximum amount of seconds allowed
-TSPAN=[0,20]
+TSPAN=[0,10]
 dt=0.01
 
 '''
@@ -490,10 +521,10 @@ for ti in range(1,int(TSPAN[1]/dt)):
             RobotsB['mu'][-1]=muB
             CurRobotR.upstate(zR,tauR-dt,qR,etaR,ti)
    
-        #  Controller       
-        thetab = Angle_Control(ti,CurRobotB,CurRobotR,zB,tauB,qB,etaB,muB,muR,FB,FR,b,r, RobotsB,RobotsR, dt)
+        #  Controller 
+        thetab = Angle_Control1(ti,CurRobotB,CurRobotR,zB,tauB,qB,etaB,muB,muR,FB,FR,b,r, RobotsB,RobotsR, b, dt)
         # Flow of robot
-        zB = robot_dynamics(zB, [45, thetab],dt)
+        zB = robot_dynamics(zB, [70, thetab],dt)
         # flow of logic variable
         #CurRobotB.step(zB,tauB,qB,etaB,ti)
         CurRobotB.step(zB,tauB-dt,qB,etaB,ti)
@@ -559,8 +590,8 @@ for ti in range(1,int(TSPAN[1]/dt)):
             RobotsB['mu'][-1]=muB
             RobotsR['mu'][-1]=muR
             CurRobotB.upstate(zB,tauB-dt,qB,etaB,ti)
-        thetab = Angle_Control(ti,CurRobotR,CurRobotB,zR,tauR,qR,etaR,muR,muB,FR,FB,r,b, RobotsR,RobotsB, dt)
-        zR = robot_dynamics(zR, [50, thetab],dt)
+        thetab = Angle_Control1(ti,CurRobotR,CurRobotB,zR,tauR,qR,etaR,muR,muB,FR,FB,r,b, RobotsR,RobotsB, r, dt)
+        zR = robot_dynamics(zR, [70, thetab],dt)
         # CurRobotR.step(zR,tauR,qR,etaR,ti)
         CurRobotR.step(zR,tauR-dt,qR,etaR,ti)
         RobotsR['mu'][-1]=muR
@@ -585,9 +616,9 @@ ax.set_xlabel("X")
 ax.set_ylabel("Y")
 ax.set_title("Hybrid Robot System") # add title
 ax.grid(True)
-circleB = plt.Circle((FB[0], FB[1]), gf, color='b', fill=False, linewidth=3) # gb=10
+circleB = plt.Circle((FB[0], FB[1]), gf, color='b', fill=False, linewidth=3, linestyle=':') # gb=10
 ax.add_patch(circleB)
-circleR = plt.Circle((FR[0], FR[1]), gf, color='r', fill=False, linewidth=3)
+circleR = plt.Circle((FR[0], FR[1]), gf, color='r', fill=False, linewidth=3, linestyle=':')
 ax.add_patch(circleR)
 # set the size of field
 ax.set(xlim=[x_f[0], x_f[2]], ylim=[y_f[0], y_f[2]])
@@ -598,21 +629,27 @@ flag_scatter_R = ax.scatter(FR[0], FR[1], c="r", s=500)
 
 #Scatter Plots of original positions
 robot_scatter_1B = ax.scatter(RobotsB["Robot1"].getTime(0)[0][0], RobotsB["Robot1"].getTime(0)[0][1], c="b", s=100)
-rect_1B=patches.Rectangle((RobotsB["Robot1"].getTime(0)[0][0], RobotsB["Robot1"].getTime(0)[0][1]), 2, 4, angle=RobotsB["Robot1"].getTime(0)[0][2], fc='blue')
+rect_1B=patches.Rectangle((RobotsB["Robot1"].getTime(0)[0][0], RobotsB["Robot1"].getTime(0)[0][1]), 1, 8, angle=RobotsB["Robot1"].getTime(0)[0][2], fc='blue')
 robot_scatter_2B = ax.scatter(RobotsB["Robot2"].getTime(0)[0][0], RobotsB["Robot2"].getTime(0)[0][1], c="b", s=100)
-rect_2B=patches.Rectangle((RobotsB["Robot2"].getTime(0)[0][0], RobotsB["Robot2"].getTime(0)[0][1]), 2, 4, angle=RobotsB["Robot2"].getTime(0)[0][2], fc='blue')
-robot_scatter_3B = ax.scatter(RobotsB["Robot3"].getTime(0)[0][0], RobotsB["Robot3"].getTime(0)[0][1], c="b", s=80)
-rect_3B=patches.Rectangle((RobotsB["Robot3"].getTime(0)[0][0], RobotsB["Robot3"].getTime(0)[0][1]), 2, 4, angle=RobotsB["Robot3"].getTime(0)[0][2], fc='blue')
+rect_2B=patches.Rectangle((RobotsB["Robot2"].getTime(0)[0][0], RobotsB["Robot2"].getTime(0)[0][1]), 1, 8, angle=RobotsB["Robot2"].getTime(0)[0][2], fc='blue')
+robot_scatter_3B = ax.scatter(RobotsB["Robot3"].getTime(0)[0][0], RobotsB["Robot3"].getTime(0)[0][1], c="b", s=100)
+rect_3B=patches.Rectangle((RobotsB["Robot3"].getTime(0)[0][0], RobotsB["Robot3"].getTime(0)[0][1]), 1, 8, angle=RobotsB["Robot3"].getTime(0)[0][2], fc='blue')
 
 robot_scatter_1R = ax.scatter(RobotsR["Robot1"].getTime(0)[0][0], RobotsR["Robot1"].getTime(0)[0][1], c="r", s=100)
-rect_1R=patches.Rectangle((RobotsR["Robot1"].getTime(0)[0][0], RobotsR["Robot1"].getTime(0)[0][1]), 2, 4, angle=RobotsR["Robot1"].getTime(0)[0][2], fc='red')
+rect_1R=patches.Rectangle((RobotsR["Robot1"].getTime(0)[0][0], RobotsR["Robot1"].getTime(0)[0][1]), 1, 8, angle=RobotsR["Robot1"].getTime(0)[0][2], fc='red')
 robot_scatter_2R = ax.scatter(RobotsR["Robot2"].getTime(0)[0][0], RobotsR["Robot2"].getTime(0)[0][1], c="r", s=100)
-rect_2R=patches.Rectangle((RobotsR["Robot2"].getTime(0)[0][0], RobotsR["Robot2"].getTime(0)[0][1]), 2, 4, angle=RobotsR["Robot2"].getTime(0)[0][2], fc='red')
+rect_2R=patches.Rectangle((RobotsR["Robot2"].getTime(0)[0][0], RobotsR["Robot2"].getTime(0)[0][1]), 1, 8, angle=RobotsR["Robot2"].getTime(0)[0][2], fc='red')
 robot_scatter_3R = ax.scatter(RobotsR["Robot3"].getTime(0)[0][0], RobotsR["Robot3"].getTime(0)[0][1], c="r", s=100)
-rect_3R=patches.Rectangle((RobotsR["Robot3"].getTime(0)[0][0], RobotsR["Robot3"].getTime(0)[0][1]), 2, 4, angle=RobotsR["Robot3"].getTime(0)[0][2], fc='red')
+rect_3R=patches.Rectangle((RobotsR["Robot3"].getTime(0)[0][0], RobotsR["Robot3"].getTime(0)[0][1]), 1, 8, angle=RobotsR["Robot3"].getTime(0)[0][2], fc='red')
 
 ax.add_patch(rect_1B)
 ax.add_patch(rect_1R)
+ax.add_patch(rect_2B)
+ax.add_patch(rect_2R)
+ax.add_patch(rect_3B)
+ax.add_patch(rect_3R)
+
+
 
 # Update function for each animation frame
 def update(i):
@@ -635,11 +672,11 @@ def update(i):
     ax.grid(True)
 
     # Draw team B (blue) flag zone boundary as a circle
-    circleB = plt.Circle((FB[0], FB[1]), gf, color='b', fill=False, linewidth=3)
+    circleB = plt.Circle((FB[0], FB[1]), gf, color='b', fill=False, linewidth=3, linestyle=':')
     ax.add_patch(circleB)
 
     # Draw team R (red) flag zone boundary
-    circleR = plt.Circle((FR[0], FR[1]), gf, color='r', fill=False, linewidth=3)
+    circleR = plt.Circle((FR[0], FR[1]), gf, color='r', fill=False, linewidth=3, linestyle=':')
     ax.add_patch(circleR)
 
     # Set exact field size again (redundant but reinforces boundary)
@@ -651,12 +688,12 @@ def update(i):
     if RobotsB['mu'][i] == 1:
         flag_scatter_B = ax.scatter(FB[0], FB[1], c="b", s=500)
     else:
-        flag_scatter_B = ax.scatter(FB[0], FB[1], c="k", s=500)
+        flag_scatter_B = ax.scatter(FB[0], FB[1], c="k", s=0)
 
     if RobotsR['mu'][i] == 1:
         flag_scatter_R = ax.scatter(FR[0], FR[1], c="r", s=500)
     else:
-        flag_scatter_R = ax.scatter(FR[0], FR[1], c="k", s=500)
+        flag_scatter_R = ax.scatter(FR[0], FR[1], c="k", s=0)
 
     # Define list of all 6 robots with their team-specific colors and data sources
     robots = [
@@ -692,9 +729,9 @@ def update(i):
         if eta == 0:
             scatter_obj = ax.scatter(x, y, s=100, marker='o', alpha=1)
         elif eta == 1:
-            scatter_obj = ax.scatter(x, y, s=100, marker='^', alpha=1)
+            scatter_obj = ax.scatter(x, y, s=250, marker='*', alpha=1)
         else:
-            scatter_obj = ax.scatter(x, y, s=100, marker='^', alpha=1)
+            scatter_obj = ax.scatter(x, y, s=250, marker='*', alpha=1)
 
         # Set new scatter location
         data = np.stack([x, y]).T
